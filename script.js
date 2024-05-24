@@ -16,7 +16,6 @@ function getWeatherReport(city) {
         }).then(showWeaterReport);  
 
 }
-
 function showWeaterReport(weather) {
     let city_code=weather.cod;
     if(city_code==='400'){ 
@@ -119,7 +118,6 @@ function getIconClass(classarg) {
         return 'fas fa-cloud-sun';
     }
 }
-
 function reset() {
     let input = document.getElementById('input-box');
     input.value = "";
