@@ -1,77 +1,133 @@
-const apiKey = '' // this app uses the free tier of OpenWeather API, so to use this app, simply sign up for the free tier and enter the api key. (I deleted the original script.js file and replaced it with this one because I realized that I exposed my API key in the old one.)
-let futureTempTime = new Array(7).fill(0)
-let futureTemp = new Array(7).fill(0)
-function usTime(x) {
-    if (x == 00 ){
-        return 12 + ' AM'
-    } else if (x < 12) {
-       return `${x.charAt(1)} AM`
-    } else if (x == 12) {
-        return `${x} PM`
-    } else if (x > 12) {
-        return `${x-12} PM`
-    } else if (x == 24) {
-        return `${x-12} AM`
+const weatherApi = {
+    key: '4eb3703790b356562054106543b748b2',
+    baseUrl: 'https://api.openweathermap.org/data/2.5/weather'
+}
+let searchInputBox = document.getElementById('input-box');
+searchInputBox.addEventListener('keypress', (event) => {
+    if (event.keyCode == 13) {
+        getWeatherReport(searchInputBox.value);
+        
+    }
+})
+function getWeatherReport(city) {
+    fetch(`${weatherApi.baseUrl}?q=${city}&appid=${weatherApi.key}&units=metric`)  // fetch method fetching the data from  base url ...metric is used for unit in celcius......here i am appending the base url to get data by city name .  
+        .then(weather => {  
+            return weather.json(); 
+        }).then(showWeaterReport);  
+
+}
+
+function showWeaterReport(weather) {
+    let city_code=weather.cod;
+    if(city_code==='400'){ 
+        swal("Empty Input", "Please Enter any city", "error");
+        reset();
+    }else if(city_code==='404'){
+        swal("Bad Input", "entered city didn't matched", "warning");
+        reset();
+    }
+    else{  
+    let op = document.getElementById('weather-body');
+    op.style.display = 'block';
+    let todayDate = new Date();
+    let parent=document.getElementById('parent');
+    let weather_body = document.getElementById('weather-body');
+    weather_body.innerHTML =
+        `
+    <div class="location-deatils">
+        <div class="city" id="city">${weather.name}, ${weather.sys.country}</div>
+        <div class="date" id="date"> ${dateManage(todayDate)}</div>
+    </div>
+    <div class="weather-status">
+        <div class="temp" id="temp">${Math.round(weather.main.temp)}&deg;C </div>
+        <div class="weather" id="weather"> ${weather.weather[0].main} <i class="${getIconClass(weather.weather[0].main)}"></i>  </div>
+        <div class="min-max" id="min-max">${Math.floor(weather.main.temp_min)}&deg;C (min) / ${Math.ceil(weather.main.temp_max)}&deg;C (max) </div>
+        <div id="updated_on">Updated as of ${getTime(todayDate)}</div>
+    </div>
+    <hr>
+    <div class="day-details">
+        <div class="basic">Feels like ${weather.main.feels_like}&deg;C | Humidity ${weather.main.humidity}%  <br> Pressure ${weather.main.pressure} mb | Wind ${weather.wind.speed} KMPH</div>
+    </div>
+    `;
+    parent.append(weather_body);
+    changeBg(weather.weather[0].main);
+    reset();
     }
 }
 
-window.addEventListener('load', ()=> {
-    navigator.geolocation.getCurrentPosition(position => {
-        let lat = position.coords.latitude
-        let long = position.coords.longitude
-        console.log("Latitude: " + lat)
-        console.log("Longitude: " + long)
 
-        let currentWeatherApi = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${long}&appid=${apiKey}&units=imperial`
-        console.log(currentWeatherApi)
-        fetch(currentWeatherApi)
-            .then(response => {
-                return response.json()
-            })
-            .then(data => {
-                console.log(data)
-                let currentTemp = document.getElementById('currentTemp')           
-                let currentWeather = document.getElementById('currentWeather')   
-                let currentWeatherText = `${data.weather[0].description.charAt(0).toUpperCase()}${data.weather[0].description.slice(1,data.weather[0].description.length)}`
-                let weatherIcon = document.getElementById('weatherIcon')
-                currentTemp.innerText = `The current temperature is: ${data.main.temp}°F`
-                currentWeather.innerText = `The current weather is: ${currentWeatherText}`
-                weatherIcon.src = `weather_icons/${data.weather[0].icon}.png`
-            })
-        let futureWeatherApi = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${long}&appid=${apiKey}&units=imperial`
-        fetch(futureWeatherApi)
-            .then(response => {
-                return response.json()
-            })
-            .then(data => {
-                console.log(data)
-                for (let i=0; i<=6; i++) {
-                    futureTempTime[i] = usTime(data.list[i].dt_txt.slice(11,13))
-                    futureTemp[i] = data.list[i].main.temp
-                    chart.update()
-                }
-            }) 
-    })
-})
+function getTime(todayDate) {
+    let hour =addZero(todayDate.getHours());
+    let minute =addZero(todayDate.getMinutes());
+    return `${hour}:${minute}`;
+}
 
-const weatherGraph = document.getElementById('weatherGraph')
-const chart = new Chart(weatherGraph, {
-    type: 'line',
-    data: {
-        labels: futureTempTime,
-        datasets: [{
-            label: 'Temperature (°F)',
-            data: futureTemp,
-            borderWidth: 2,
-            lineTension: 0.3,
-            responsive: true,
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    },
-})
+function dateManage(dateArg) {
+    let days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    let months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    let year = dateArg.getFullYear();
+    let month = months[dateArg.getMonth()];
+    let date = dateArg.getDate();
+    let day = days[dateArg.getDay()];
+    // console.log(year+" "+date+" "+day+" "+month);
+    return `${date} ${month} (${day}) , ${year}`
+}
+
+function changeBg(status) {
+    if (status === 'Clouds') {
+        document.body.style.backgroundImage = 'url(img/clouds.jpg)';
+    } else if (status === 'Rain') {
+        document.body.style.backgroundImage = 'url(img/rainy.jpg)';
+    } else if (status === 'Clear') {
+        document.body.style.backgroundImage = 'url(img/clear.jpg)';
+    }
+    else if (status === 'Snow') {
+        document.body.style.backgroundImage = 'url(img/snow.jpg)';
+    }
+    else if (status === 'Sunny') {
+        document.body.style.backgroundImage = 'url(img/sunny.jpg)';
+    } else if (status === 'Thunderstorm') {
+        document.body.style.backgroundImage = 'url(img/thunderstrom.jpg)';
+    } else if (status === 'Drizzle') {
+        document.body.style.backgroundImage = 'url(img/drizzle.jpg)';
+    } else if (status === 'Mist' || status === 'Haze' || status === 'Fog') {
+        document.body.style.backgroundImage = 'url(img/mist.jpg)';
+    }
+
+    else {
+        document.body.style.backgroundImage = 'url(img/bg.jpg)';
+    }
+}
+function getIconClass(classarg) {
+    if (classarg === 'Rain') {
+        return 'fas fa-cloud-showers-heavy';
+    } else if (classarg === 'Clouds') {
+        return 'fas fa-cloud';
+    } else if (classarg === 'Clear') {
+        return 'fas fa-cloud-sun';
+    } else if (classarg === 'Snow') {
+        return 'fas fa-snowman';
+    } else if (classarg === 'Sunny') {
+        return 'fas fa-sun';
+    } else if (classarg === 'Mist') {
+        return 'fas fa-smog';
+    } else if (classarg === 'Thunderstorm' || classarg === 'Drizzle') {
+        return 'fas fa-thunderstorm';
+    } else {
+        return 'fas fa-cloud-sun';
+    }
+}
+
+function reset() {
+    let input = document.getElementById('input-box');
+    input.value = "";
+}
+
+function addZero(i) {
+    if (i < 10) {
+        i = "0" + i;
+    }
+    return i;
+}
